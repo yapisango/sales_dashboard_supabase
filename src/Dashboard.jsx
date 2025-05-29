@@ -1,13 +1,47 @@
 import supabase from "./supabase-client.js";
 import { useEffect, useState } from "react";
-import { Chart } from "react-charts"
+import { Chart } from "react-charts";
+import Form from "./Form";
 
 function Dashboard() {
   const [metrics, setMetrics] = useState([]);
 
   useEffect(() => {
-    fetchMetrics();
-  }, []);
+  fetchMetrics();
+
+  const channel = supabase
+  .channel('deal-changes')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'sales_deals' },
+    (payload) => {
+      console.log('INSERT - New row:', payload.new);
+      fetchMetrics();
+    }
+  )
+  .on(
+    'postgres_changes',
+    { event: 'UPDATE', schema: 'public', table: 'sales_deals' },
+    (payload) => {
+      console.log('UPDATE - Updated row:', payload.new);
+      fetchMetrics();
+    }
+  )
+  .on(
+    'postgres_changes',
+    { event: 'DELETE', schema: 'public', table: 'sales_deals' },
+    (payload) => {
+      console.log('DELETE - Deleted row:', payload.old);
+      fetchMetrics();
+    }
+  )
+  .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+
 
   async function fetchMetrics() {
     try {
@@ -20,7 +54,7 @@ function Dashboard() {
       console.log("Fetched data:", data);
 
       // Filter by current quarter
-      const currentQuarter = Math.floor(new Date().getMonth() / 3); // Q0–Q3
+      const currentQuarter = Math.floor(new Date().getMonth() / 3); 
       const currentYear = new Date().getFullYear();
 
       const filtered = data.filter(({ created_at }) => {
@@ -30,6 +64,8 @@ function Dashboard() {
           Math.floor(date.getMonth() / 3) === currentQuarter
         );
       });
+
+      setMetrics(filtered);
 
       // Group and sum sales by name
       const salesByName = filtered.reduce((acc, { name, value }) => {
@@ -52,7 +88,7 @@ function Dashboard() {
     const maxSum = Math.max(...metrics.map((m) => m.total_sales));
     return maxSum + 2000;
   }
-  return 5000; 
+  return 1000; 
 }
 
 const maxValue = y_max();
@@ -100,12 +136,13 @@ const secondaryAxes = [
               type: 'bar',
               defaultColors: ['#58d675'],
               tooltip: {
-                show: false,
+                show: true,
               },
             }}
           />
         </div>
       </div>
+      <Form metrics={metrics} />
     </div>
   );
 }
