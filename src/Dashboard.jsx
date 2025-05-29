@@ -25,7 +25,7 @@ function Dashboard() {
   return (
     <div className="dashboard-wrapper">
       <div className="chart-container">
-        <h2>Total Sales This Quarter ($)</h2>
+        <h2>Total Sales This Quarter - Test PR($)</h2>
       </div>
     </div>
   );
